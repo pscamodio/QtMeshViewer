@@ -17,8 +17,12 @@ linux {
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp
+        mainwindow.cpp \
+    openglwidget.cpp \
+    meshviewer.cpp
 
-HEADERS  += mainwindow.h
+HEADERS  += mainwindow.h \
+    openglwidget.h \
+    meshviewer.h
 
 FORMS    += mainwindow.ui
