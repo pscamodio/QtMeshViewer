@@ -11,11 +11,6 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = MeshViewer
 TEMPLATE = app
 
-linux {
-    QMAKE_CXXFLAGS += -std=c++11
-}
-
-
 SOURCES += main.cpp\
         mainwindow.cpp \
     openglwidget.cpp \
@@ -26,3 +21,15 @@ HEADERS  += mainwindow.h \
     meshviewer.h
 
 FORMS    += mainwindow.ui
+
+unix:!maxc{
+    QMAKE_CXXFLAGS += -std=c++11
+    CONFIG(release, debug|release){
+        LIBS += -L/usr/local/lib/OpenMesh/ -lOpenMeshCore
+    } else {
+        LIBS += -L/usr/local/lib/OpenMesh/ -lOpenMeshCored
+    }
+    INCLUDEPATH += /usr/local/include/OpenMesh
+    DEPENDPATH += /usr/local/include/OpenMesh
+    PRE_TARGETDEPS += /usr/local/lib/OpenMesh/libOpenMeshCore.a
+}
