@@ -2,6 +2,8 @@
 
 #include <QOpenGLShaderProgram>
 #include <QScreen>
+#include <QMouseEvent>
+#include <QVector3D>
 
 static const char *vertexShaderSource =
         "attribute highp vec4 posAttr;\n"
@@ -16,19 +18,27 @@ static const char *vertexShaderSource =
 static const char *fragmentShaderSource =
         "varying lowp vec4 col;\n"
         "void main() {\n"
-        "   gl_FragColor = col;\n"
+        "   gl_FragColor = col; \n"
         "}\n";
 
 MeshViewer::MeshViewer(QWindow *parent) :
     OpenGlWidget(parent),
-    m_frame(0)
+    m_mousePos(0, 0),
+    m_meshptr()
 {
-    setAnimating(true);
+    m_pos.perspective(60, 4.0/3.0, 0.1, 100.0);
+    m_pos.translate(0, 0, -2);
+}
+
+void MeshViewer::setMesh(std::weak_ptr<Mesh> mesh)
+{
+    m_meshptr = mesh;
 }
 
 void MeshViewer::initialize()
 {
     glEnable(GL_DEPTH);
+    glEnable(GL_BLEND);
     m_program = new QOpenGLShaderProgram(this);
     m_program->addShaderFromSourceCode(QOpenGLShader::Vertex, vertexShaderSource);
     m_program->addShaderFromSourceCode(QOpenGLShader::Fragment, fragmentShaderSource);
@@ -45,91 +55,122 @@ void MeshViewer::render()
     glClear(GL_COLOR_BUFFER_BIT);
 
     m_program->bind();
+    m_program->setUniformValue(m_matrixUniform, m_pos);
 
-    QMatrix4x4 matrix;
-    matrix.perspective(60, 4.0/3.0, 0.1, 100.0);
-    matrix.translate(0, 0, -2);
-    matrix.rotate(100.0f * m_frame / screen()->refreshRate(), 1, 1, 0);
+    auto meshptr = m_meshptr.lock();
+    if (meshptr){
 
-    m_program->setUniformValue(m_matrixUniform, matrix);
 
-    GLfloat vertices[] = {
-        -0.5f, -0.5f, 0.5f,
-        0.5f, -0.5f, 0.5f,
-        0.5f, 0.5f, 0.5f,
-        -0.5f, 0.5f, 0.5f,
+    } else {
+        GLfloat vertices[] = {
+            -0.5f, -0.5f, 0.5f,
+            0.5f, -0.5f, 0.5f,
+            0.5f, 0.5f, 0.5f,
+            -0.5f, 0.5f, 0.5f,
 
-        -0.5f, 0.5f, 0.5f,
-        -0.5f, -0.5f, 0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, 0.5f, -0.5f,
+            -0.5f, 0.5f, 0.5f,
+            -0.5f, -0.5f, 0.5f,
+            -0.5f, -0.5f, -0.5f,
+            -0.5f, 0.5f, -0.5f,
 
-        -0.5f, 0.5f, -0.5f,
-        0.5f, 0.5f, -0.5f,
-        0.5f, 0.5f, 0.5f,
-        -0.5f, 0.5f, 0.5f,
+            -0.5f, 0.5f, -0.5f,
+            0.5f, 0.5f, -0.5f,
+            0.5f, 0.5f, 0.5f,
+            -0.5f, 0.5f, 0.5f,
 
-        -0.5f, -0.5f, 0.5f,
-        0.5f, -0.5f, 0.5f,
-        0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
+            -0.5f, -0.5f, 0.5f,
+            0.5f, -0.5f, 0.5f,
+            0.5f, -0.5f, -0.5f,
+            -0.5f, -0.5f, -0.5f,
 
-        0.5f, -0.5f, 0.5f,
-        0.5f, 0.5f, 0.5f,
-        0.5f, 0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
+            0.5f, -0.5f, 0.5f,
+            0.5f, 0.5f, 0.5f,
+            0.5f, 0.5f, -0.5f,
+            0.5f, -0.5f, -0.5f,
 
-        -0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
-        0.5f, 0.5f, -0.5f,
-        -0.5f, 0.5f, -0.5f,
-    };
+            -0.5f, -0.5f, -0.5f,
+            0.5f, -0.5f, -0.5f,
+            0.5f, 0.5f, -0.5f,
+            -0.5f, 0.5f, -0.5f,
+        };
 
-    GLfloat colors[] = {
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
+        GLfloat colors[] = {
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
 
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
 
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f,
 
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
 
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
 
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-    };
+            0.0f, 0.0f, 1.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f,
+        };
 
-    glVertexAttribPointer(m_posAttr, 3, GL_FLOAT, GL_FALSE, 0, vertices);
-    glVertexAttribPointer(m_colAttr, 3, GL_FLOAT, GL_FALSE, 0, colors);
+        glVertexAttribPointer(m_posAttr, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+        glVertexAttribPointer(m_colAttr, 4, GL_FLOAT, GL_FALSE, 0, colors);
 
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
 
-    glDrawArrays(GL_QUADS, 0, 24);
+        glDrawArrays(GL_QUADS, 0, 24);
 
-    glDisableVertexAttribArray(1);
-    glDisableVertexAttribArray(0);
-
+        glDisableVertexAttribArray(1);
+        glDisableVertexAttribArray(0);
+    }
     m_program->release();
+}
 
-    ++m_frame;
+void MeshViewer::mousePressEvent(QMouseEvent * ev)
+{
+    if (ev->buttons() & Qt::LeftButton){
+        m_mousePos = ev->pos();
+    }
+}
 
+void MeshViewer::mouseMoveEvent(QMouseEvent *ev)
+{
+    if (ev->buttons() & Qt::LeftButton){
+        QVector3D move (ev->pos() - m_mousePos);
+        move.setY(-move.y());
+        if (ev->modifiers() & Qt::CTRL){
+            QVector3D center (0.0, 0.0, 1.0);
+            QVector3D axis = QVector3D::crossProduct(move, center);
+            //move.normalize();
+            m_pos.rotate(3.0, axis);
+        } else {
+            m_pos.translate(-move/100.0);
+        }
+        m_mousePos = ev->pos();
+        renderNow();
+    }
+}
+
+void MeshViewer::wheelEvent(QWheelEvent *ev)
+{
+    if (ev->modifiers() & Qt::CTRL){
+        float delta = ev->delta()/100.0;
+        auto test = m_pos.mapVector(QVector3D(0.0, 0.0, 0.1));
+        m_pos.translate(test*-delta);
+        renderNow();
+    }
 }
